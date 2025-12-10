@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
 import '../models/price_history.dart';
 import '../models/product.dart';
-import '../models/market.dart'; // <--- Nuevo import
+import '../models/market.dart';
 import '../theme/app_colors.dart';
 
 class ChartScreen extends StatefulWidget {
@@ -14,15 +14,11 @@ class ChartScreen extends StatefulWidget {
 class _ChartScreenState extends State<ChartScreen> {
   final ApiService _api = ApiService();
 
-  // Listas para los Dropdowns
   List<Product> products = [];
   List<Market> markets = [];
-
-  // Selecciones del usuario
   Product? selectedProduct;
   Market? selectedMarket;
 
-  // Estado del gráfico
   bool isLoadingDropdowns = true;
   bool isLoadingChart = false;
   PriceHistory? historyData;
@@ -34,7 +30,6 @@ class _ChartScreenState extends State<ChartScreen> {
     _loadDropdowns();
   }
 
-  // Carga productos y mercados al mismo tiempo
   void _loadDropdowns() async {
     try {
       final results = await Future.wait([
@@ -49,7 +44,6 @@ class _ChartScreenState extends State<ChartScreen> {
       });
     } catch (e) {
       setState(() => isLoadingDropdowns = false);
-      // Manejar error silenciosamente o mostrar snackbar
     }
   }
 
@@ -77,7 +71,7 @@ class _ChartScreenState extends State<ChartScreen> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = "No hay datos suficientes para graficar.";
+        errorMessage = e.toString(); // Mostramos el error real para debug
         isLoadingChart = false;
         historyData = null;
       });
@@ -104,12 +98,9 @@ class _ChartScreenState extends State<ChartScreen> {
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- 1. PANEL DE CONTROL (Formulario) ---
             _buildControlPanel(),
-
             SizedBox(height: 30),
 
-            // --- 2. ÁREA DEL GRÁFICO ---
             if (isLoadingChart)
               SizedBox(
                 height: 200,
@@ -119,7 +110,7 @@ class _ChartScreenState extends State<ChartScreen> {
               )
             else if (errorMessage.isNotEmpty)
               _buildErrorState()
-            else if (historyData != null)
+            else if (historyData != null && historyData!.prices.isNotEmpty)
               _buildChartCard()
             else
               _buildPlaceholder(),
@@ -142,7 +133,6 @@ class _ChartScreenState extends State<ChartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Dropdown Producto
           Text(
             "PRODUCTO",
             style: TextStyle(
@@ -172,10 +162,7 @@ class _ChartScreenState extends State<ChartScreen> {
               ),
             ),
           ),
-
           SizedBox(height: 15),
-
-          // Dropdown Mercado
           Text(
             "MERCADO",
             style: TextStyle(
@@ -205,10 +192,7 @@ class _ChartScreenState extends State<ChartScreen> {
               ),
             ),
           ),
-
           SizedBox(height: 20),
-
-          // Botón VER
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -223,7 +207,7 @@ class _ChartScreenState extends State<ChartScreen> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue, // btn-primary
+                backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -236,24 +220,24 @@ class _ChartScreenState extends State<ChartScreen> {
   }
 
   Widget _buildChartCard() {
-    // Preparamos los datos
     // 1. Datos históricos
     List<FlSpot> historySpots = historyData!.prices.asMap().entries.map((e) {
       return FlSpot(e.key.toDouble(), e.value);
     }).toList();
 
-    // 2. Datos de predicción (Conectamos el último punto histórico con la predicción)
+    // 2. Datos de predicción
     List<FlSpot> predictionSpots = [];
-    if (historyData!.prediction != null && historySpots.isNotEmpty) {
+
+    // ✅ CORRECCIÓN AQUÍ: Usamos predictionPrice en lugar de prediction
+    if (historyData!.predictionPrice != null && historySpots.isNotEmpty) {
+      predictionSpots.add(historySpots.last);
       predictionSpots.add(
-        historySpots.last,
-      ); // Empezamos donde termina la historia
-      predictionSpots.add(
-        FlSpot(historySpots.length.toDouble(), historyData!.prediction!),
-      ); // Punto futuro
+        FlSpot(historySpots.length.toDouble(), historyData!.predictionPrice!),
+      );
     }
 
     return Container(
+      height: 350, // Le damos altura fija al contenedor del gráfico
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -276,27 +260,26 @@ class _ChartScreenState extends State<ChartScreen> {
                   ),
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  "IA Activa",
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+              if (historyData!.predictionPrice != null)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    "IA Activa",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           SizedBox(height: 30),
-
-          SizedBox(
-            height: 300,
+          Expanded(
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -312,7 +295,39 @@ class _ChartScreenState extends State<ChartScreen> {
                     ),
                   ),
                   bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                    sideTitles: SideTitles(
+                      showTitles: true, // ✅ Activamos las fechas abajo
+                      interval: 1, // Muestra todas (o ajusta si son muchas)
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        // Mostramos fechas históricas (dates)
+                        if (index >= 0 && index < historyData!.dates.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              historyData!.dates[index],
+                              style: TextStyle(fontSize: 10),
+                            ),
+                          );
+                        }
+                        // Mostramos fecha de predicción si es el último punto
+                        if (index == historyData!.dates.length &&
+                            historyData!.predictionDate != null) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              historyData!.predictionDate!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        }
+                        return Text("");
+                      },
+                    ),
                   ),
                   rightTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -323,7 +338,7 @@ class _ChartScreenState extends State<ChartScreen> {
                 ),
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
-                  // LÍNEA SÓLIDA (HISTORIA)
+                  // LÍNEA SÓLIDA
                   LineChartBarData(
                     spots: historySpots,
                     isCurved: true,
@@ -335,25 +350,22 @@ class _ChartScreenState extends State<ChartScreen> {
                       color: AppColors.petroleum.withOpacity(0.1),
                     ),
                   ),
-                  // LÍNEA PUNTEADA (PREDICCIÓN)
+                  // LÍNEA PUNTEADA
                   if (predictionSpots.isNotEmpty)
                     LineChartBarData(
                       spots: predictionSpots,
                       isCurved: false,
-                      color: AppColors.primary, // Verde
+                      color: AppColors.primary,
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(show: true),
-                      dashArray: [5, 5], // <--- ESTO HACE LA LÍNEA PUNTEADA
+                      dashArray: [5, 5],
                     ),
                 ],
               ),
             ),
           ),
-
           SizedBox(height: 20),
-
-          // Leyenda
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

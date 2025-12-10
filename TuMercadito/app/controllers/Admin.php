@@ -263,4 +263,26 @@ class Admin extends Controller {
              header('Location: ' . URLROOT . '/admin/usuarios');
         }
     }
+    // ==========================================
+    // NUEVA FUNCIÓN PARA LA VISTA DE GRÁFICOS
+    // ==========================================
+    public function graficos() {
+        // 1. Obtener listas para los dropdowns
+        // Reutilizamos el modelo de ranking que ya tienes cargado en el constructor ($this->rankingModel)
+        // y el de admin ($this->adminModel)
+        
+        $products = $this->rankingModel->getAllProducts();
+        $markets = $this->adminModel->getMarkets();
+
+        $data = [
+            'title' => 'Tendencias y Gráficos',
+            'products' => $products,
+            'markets' => $markets
+        ];
+
+        // Cargar la vista (asegúrate de crear el archivo en views/admin/graficos.php)
+        // Nota: En el código anterior te dije 'admin/chart', pero si tu archivo se llama diferente, cámbialo aquí.
+        // Asumiré que guardarás la vista que me pasaste como 'graficos.php'
+        $this->view('admin/graficos', $data); 
+    }
 }
