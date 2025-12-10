@@ -8,10 +8,9 @@
 
 | Panel Web (Admin) | App Móvil (Usuario) |
 |:---:|:---:|
-| ![Web Dashboard](https://via.placeholder.com/300x180?text=Dashboard+Web) | ![Mobile Home](https://via.placeholder.com/150x300?text=App+Home) |
+| ![Web Dashboard](./Screenshots/Admin.png) | ![Mobile Home](./Screenshots/User.png) |
 | *Gestión de productos y precios* | *Comparador y Ranking* |
 
-*(Nota: Reemplaza estos links con tus propias capturas de pantalla)*
 
 ---
 
